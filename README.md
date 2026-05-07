@@ -27,7 +27,13 @@ pip install -r requirements.txt
 ```
 
 ### 4. Configure API Key
-Open `main.py` and replace the `X-RapidAPI-Key` in the `headers` dictionary with your own key from [RapidAPI](https://rapidapi.com/LightningDev/api/simple-chatgpt-api).
+1. Create a file named `.env` in the root directory.
+2. Add your RapidAPI credentials to the `.env` file:
+   ```env
+   RAPID_API_KEY=your_actual_key_here
+   RAPID_API_HOST=open-ai21.p.rapidapi.com
+   ```
+   You can get your key from [RapidAPI](https://rapidapi.com/LightningDev/api/simple-chatgpt-api).
 
 ## 🛠️ How to Run
 
