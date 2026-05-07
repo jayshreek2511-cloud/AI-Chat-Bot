@@ -1,0 +1,4 @@
+requests
+pyfiglet
+flask
+flask-cors
