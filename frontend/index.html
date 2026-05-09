@@ -123,6 +123,17 @@
 
     <!-- BOTTOM INPUT AREA -->
     <div class="input-wrapper">
+
+      <!-- RAG PART 6 START — Upload Panel -->
+      <div class="rag-upload-panel" id="ragUploadPanel">
+        <input type="file" id="ragFileInput" accept=".pdf,.txt" hidden />
+        <div class="rag-dropzone" id="ragDropzone">
+          <span class="rag-dropzone-text">📄 Drop PDF here or click to upload</span>
+        </div>
+        <div class="rag-upload-status" id="ragUploadStatus">No document loaded</div>
+      </div>
+      <!-- RAG PART 6 END — Upload Panel -->
+
       <div class="input-container" id="inputContainer">
         <button class="attach-btn" title="Attach file (UI only)">
           <svg viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -136,6 +147,9 @@
             spellcheck="true"
           ></textarea>
         </div>
+        <!-- RAG PART 6 START — Doc Mode Toggle -->
+        <button class="rag-docmode-btn" id="ragDocModeBtn" title="Toggle Document Mode">📄 Doc</button>
+        <!-- RAG PART 6 END — Doc Mode Toggle -->
         <button class="send-btn" id="sendBtn" aria-label="Send message" disabled>
           <svg viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>

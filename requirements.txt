@@ -2,3 +2,7 @@ requests
 pyfiglet
 flask
 flask-cors
+python-dotenv
+google-generativeai
+pdfplumber
+chromadb

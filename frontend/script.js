@@ -279,6 +279,10 @@ newChatBtn.addEventListener('click', startNewChat);
 hamburgerBtn.addEventListener('click', openSidebar);
 sidebarCloseBtn.addEventListener('click', closeSidebar);
 sidebarOverlay.addEventListener('click', closeSidebar);
+// RAG FIX START — define missing settings functions
+function openSettings() { settingsModal.classList.add('open'); }
+function closeSettings() { settingsModal.classList.remove('open'); }
+// RAG FIX END
 settingsBtn.addEventListener('click', openSettings);
 modalCloseBtn.addEventListener('click', closeSettings);
 
@@ -364,3 +368,268 @@ window.addEventListener('load', () => {
   messageInput.focus();
   scrollToBottom(false);
 });
+
+// ============================================
+// RAG PART 6 START — Upload, Doc Mode, Streaming, Sources
+// ============================================
+
+// RAG FIX START — Wrap in DOMContentLoaded to ensure DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+
+// ── RAG DOM refs ────────────────────────────
+const ragDropzone     = document.getElementById('ragDropzone');
+const ragFileInput    = document.getElementById('ragFileInput');
+const ragUploadStatus = document.getElementById('ragUploadStatus');
+const ragDocModeBtn   = document.getElementById('ragDocModeBtn');
+
+if (!ragDropzone || !ragFileInput) {
+  console.error('RAG elements not found in DOM!');
+  return;
+}
+console.log('RAG upload zone initialized');
+
+// ── RAG State ───────────────────────────────
+let ragDocModeActive = false;
+let ragDocLoaded     = false;
+const ragSessionId   = 'rag_' + Math.random().toString(36).substring(2, 10);
+
+// ── File Upload — Click ─────────────────────
+ragDropzone.addEventListener('click', function(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  console.log('Drop zone clicked');
+  ragFileInput.click();
+});
+
+ragFileInput.addEventListener('change', function() {
+  if (ragFileInput.files.length > 0) {
+    console.log('File selected:', ragFileInput.files[0].name);
+    ragUploadFile(ragFileInput.files[0]);
+  }
+});
+
+// ── File Upload — Drag & Drop ───────────────
+ragDropzone.addEventListener('dragover', function(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  ragDropzone.classList.add('drag-over');
+});
+ragDropzone.addEventListener('dragleave', function() {
+  ragDropzone.classList.remove('drag-over');
+});
+ragDropzone.addEventListener('drop', function(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  ragDropzone.classList.remove('drag-over');
+  if (e.dataTransfer.files.length > 0) {
+    console.log('File dropped:', e.dataTransfer.files[0].name);
+    ragUploadFile(e.dataTransfer.files[0]);
+  }
+});
+
+// ── Upload to /upload ───────────────────────
+async function ragUploadFile(file) {
+  console.log('Uploading to /upload...');
+  ragUploadStatus.textContent = '⏳ Processing document...';
+  ragUploadStatus.className = 'rag-upload-status loading';
+
+  const fd = new FormData();
+  fd.append('file', file);
+
+  try {
+    const res = await fetch(`${BASE_URL}/upload`, { method: 'POST', body: fd });
+    const data = await res.json();
+    console.log('Upload success:', data);
+
+    if (data.error) {
+      ragUploadStatus.textContent = `❌ ${data.error}`;
+      ragUploadStatus.className = 'rag-upload-status error';
+      return;
+    }
+
+    ragDocLoaded = true;
+    ragUploadStatus.textContent = `✅ Document loaded: ${data.filename} (${data.total_chunks} chunks)`;
+    ragUploadStatus.className = 'rag-upload-status success';
+
+    // Auto-enable Doc Mode
+    if (!ragDocModeActive) ragToggleDocMode();
+
+  } catch (err) {
+    console.error('Upload failed:', err);
+    ragUploadStatus.textContent = '❌ Upload failed. Try again.';
+    ragUploadStatus.className = 'rag-upload-status error';
+  }
+}
+
+// ── Doc Mode Toggle ─────────────────────────
+ragDocModeBtn.addEventListener('click', ragToggleDocMode);
+
+function ragToggleDocMode() {
+  ragDocModeActive = !ragDocModeActive;
+  ragDocModeBtn.classList.toggle('active', ragDocModeActive);
+
+  if (ragDocModeActive) {
+    ragDocModeBtn.textContent = '📄 Doc ✓';
+    messageInput.placeholder = 'Ask about your document...';
+  } else {
+    ragDocModeBtn.textContent = '📄 Doc';
+    messageInput.placeholder = 'Message NeuralChat...';
+  }
+}
+
+// ── Override sendMessage when Doc Mode is on ─
+const originalSendMessage = sendMessage;
+
+async function ragSendMessage() {
+  if (!ragDocModeActive) return originalSendMessage();
+  if (isWaiting) return;
+
+  const text = messageInput.value.trim();
+  if (!text) return;
+
+  messageInput.value = '';
+  messageInput.style.height = 'auto';
+  sendBtn.disabled = true;
+
+  addMessage('user', text);
+  isWaiting = true;
+  hideWelcome();
+
+  // Show doc indicator + typing
+  const indicatorGroup = document.createElement('div');
+  indicatorGroup.className = 'message-group';
+  indicatorGroup.id = 'ragStreamGroup';
+
+  const indicatorText = document.createElement('div');
+  indicatorText.className = 'rag-doc-indicator';
+  indicatorText.style.cssText = 'padding: 0 24px; max-width: 860px; margin: 0 auto; width: 100%;';
+  indicatorText.textContent = '📄 Answering from document...';
+
+  const streamRow = document.createElement('div');
+  streamRow.className = 'message-row bot';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'message-avatar';
+  avatar.textContent = 'AI';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble';
+  bubble.id = 'ragStreamBubble';
+  bubble.innerHTML = '<span class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></span>';
+
+  streamRow.appendChild(avatar);
+  streamRow.appendChild(bubble);
+  indicatorGroup.appendChild(indicatorText);
+  indicatorGroup.appendChild(streamRow);
+  messagesContainer.appendChild(indicatorGroup);
+  scrollToBottom();
+
+  try {
+    const res = await fetch(`${BASE_URL}/rag-chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: text, session_id: ragSessionId, stream: true })
+    });
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let fullAnswer = '';
+    let firstChunk = true;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      let chunk = decoder.decode(value, { stream: true });
+
+      if (chunk.includes('[DONE]')) {
+        chunk = chunk.replace(/\n?\n?\[DONE\]/g, '');
+      }
+
+      fullAnswer += chunk;
+
+      if (firstChunk) {
+        bubble.innerHTML = '';
+        firstChunk = false;
+      }
+      bubble.innerHTML = formatMessage(fullAnswer);
+      scrollToBottom();
+    }
+
+    const meta = document.createElement('div');
+    meta.className = 'message-meta';
+    meta.innerHTML = `<span>${timeNow()}</span>`;
+    meta.style.cssText = 'padding-left: 44px;';
+    indicatorGroup.appendChild(meta);
+
+    ragFetchSources(text, indicatorGroup);
+
+  } catch (err) {
+    bubble.innerHTML = formatMessage(`⚠️ **Error:** ${err.message}`);
+  } finally {
+    isWaiting = false;
+  }
+}
+
+// ── Fetch sources separately for display ────
+async function ragFetchSources(question, container) {
+  try {
+    const res = await fetch(`${BASE_URL}/rag-chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: question, session_id: ragSessionId, stream: false })
+    });
+    const data = await res.json();
+
+    if (data.sources && data.sources.length > 0) {
+      const sourcesWrap = document.createElement('div');
+      sourcesWrap.style.cssText = 'padding: 0 24px 0 68px; max-width: 860px; margin: 0 auto; width: 100%;';
+
+      const toggleBtn = document.createElement('button');
+      toggleBtn.className = 'rag-sources-toggle';
+      toggleBtn.textContent = `📎 Sources (${data.sources.length})`;
+
+      const sourcesList = document.createElement('div');
+      sourcesList.className = 'rag-sources-list';
+
+      data.sources.forEach((src, i) => {
+        const pill = document.createElement('div');
+        pill.className = 'rag-source-pill';
+        pill.innerHTML = `<strong>${src.chunk_id}</strong> — ${escapeHtml(src.preview)}...`;
+        sourcesList.appendChild(pill);
+      });
+
+      toggleBtn.addEventListener('click', () => {
+        sourcesList.classList.toggle('open');
+        toggleBtn.textContent = sourcesList.classList.contains('open')
+          ? `📎 Hide Sources`
+          : `📎 Sources (${data.sources.length})`;
+      });
+
+      sourcesWrap.appendChild(toggleBtn);
+      sourcesWrap.appendChild(sourcesList);
+      container.appendChild(sourcesWrap);
+    }
+  } catch (err) {
+    console.error('Failed to fetch sources:', err);
+  }
+}
+
+// ── Replace the send handler ────────────────
+sendBtn.removeEventListener('click', sendMessage);
+sendBtn.addEventListener('click', ragSendMessage);
+
+document.getElementById('messageInput').addEventListener('keydown', function ragKeyHandler(e) {
+  if (e.key === 'Enter' && !e.shiftKey && ragDocModeActive) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    ragSendMessage();
+  }
+}, true);
+
+});  // end DOMContentLoaded
+// RAG FIX END
+
+// ============================================
+// RAG PART 6 END
+// ============================================

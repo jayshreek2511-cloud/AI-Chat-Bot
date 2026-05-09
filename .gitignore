@@ -12,3 +12,6 @@ ENV/
 
 # Project specific
 conversations.json
+rag_chat_history.db
+chroma_store/
+uploads/
