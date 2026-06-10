@@ -1,5 +1,7 @@
 # NeuralChat — Intelligent RAG AI Assistant
 
+![NeuralChat demo](assets/NeuralChatdemo.gif.gif)
+
 NeuralChat is a premium, document-aware AI chatbot application. It combines a high-performance Python backend with a stunning glassmorphism-inspired web interface, now upgraded with a powerful **RAG (Retrieval-Augmented Generation)** pipeline.
 
 ## ✨ Key Features
@@ -53,8 +55,6 @@ python api.py
 3. **Augmentation**: The retrieved context is injected into the Gemini 2.5 prompt.
 4. **Generation**: Gemini generates a response, which is then streamed word-by-word to the UI.
 
-## Interface Preview
-![NeuralChat demo](assets/neuralchat-demo.gif)
 
 ---
 *NeuralChat — Building the future of document-aware AI.*
