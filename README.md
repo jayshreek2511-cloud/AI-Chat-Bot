@@ -53,8 +53,8 @@ python api.py
 3. **Augmentation**: The retrieved context is injected into the Gemini 2.5 prompt.
 4. **Generation**: Gemini generates a response, which is then streamed word-by-word to the UI.
 
-## 📸 Interface Preview
-![NeuralChat Interface](https://i.postimg.cc/X7cFsqBr/image.png)
+## Interface Preview
+![NeuralChat demo](assets/neuralchat-demo.gif)
 
 ---
 *NeuralChat — Building the future of document-aware AI.*
